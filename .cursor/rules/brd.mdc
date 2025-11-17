@@ -1,0 +1,511 @@
+---
+alwaysApply: true
+---
+Business Requirements Document (BRD)
+PyCaret ML Workflow Manager - Gradio Application
+
+1. Executive Summary
+1.1 Purpose
+This document outlines the requirements for a Gradio-based web application that provides a comprehensive, user-friendly interface for the complete PyCaret machine learning workflow. The application will enable users to upload data, configure experiments, train models, evaluate results, and download trained models—all through an intuitive visual interface.
+1.2 Scope
+The application will support the following PyCaret modules:
+
+Classification (binary and multiclass)
+Regression
+Clustering
+Anomaly Detection
+Time Series Forecasting
+
+1.3 Target Users
+
+Data scientists and ML practitioners seeking rapid prototyping
+Business analysts with basic ML knowledge
+Students learning machine learning
+Researchers conducting experiments
+
+
+2. Product Overview
+2.1 Product Vision
+Create an accessible, production-ready Gradio application that democratizes machine learning by abstracting PyCaret's powerful capabilities into a guided, visual workflow.
+2.2 Key Benefits
+
+Speed: Reduce time from data to trained model from hours to minutes
+Accessibility: No coding required for standard ML workflows
+Transparency: Clear visibility into model performance and comparisons
+Flexibility: Support for multiple ML problem types and configurations
+Portability: Downloadable models for deployment
+
+
+3. Functional Requirements
+3.1 Workflow Overview
+The application follows a sequential workflow:
+Upload Data → Select Problem Type → Configure Setup → 
+Compare Models → Evaluate Models → Download Selected Model
+3.2 Feature Requirements
+3.2.1 Data Upload Module
+FR-1.1: File Upload
+
+Accept CSV, Excel (.xlsx, .xls), and Parquet files
+Maximum file size: 500MB
+Display file upload status with progress indicator
+
+FR-1.2: Data Preview
+
+Display first 10 and last 10 rows of uploaded data
+Show dataset dimensions (rows × columns)
+Display data types for each column
+Show basic statistics (mean, median, std, min, max for numeric columns)
+Identify missing values with count and percentage
+
+FR-1.3: Data Validation
+
+Validate file format
+Check for minimum required rows (at least 10)
+Detect and warn about high percentage of missing values (>30%)
+Alert if dataset is too small for meaningful training
+
+3.2.2 Problem Type Selection
+FR-2.1: ML Problem Type Selector
+
+Radio button group with five options:
+
+Classification
+Regression
+Clustering
+Anomaly Detection
+Time Series Forecasting
+
+
+Display brief description of each problem type
+Show example use cases for each type
+
+FR-2.2: Target Column Selection
+
+Dropdown menu showing all columns (for supervised learning)
+Auto-detect and suggest likely target columns based on:
+
+Column names (e.g., "target", "label", "class", "outcome")
+Data types (categorical for classification)
+
+
+Not required for Clustering and Anomaly Detection
+For Time Series: select date/time column and target variable
+
+3.2.3 Setup Configuration
+FR-3.1: Basic Setup Parameters
+For all problem types:
+
+Session ID (optional, for reproducibility)
+Train/test split ratio (default: 70/30)
+Cross-validation folds (default: 10 for classification/regression, 5 for time series)
+
+FR-3.2: Advanced Setup Parameters (Collapsible/Accordion)
+For Classification/Regression:
+
+Normalization method (zscore, minmax, maxabs, robust)
+Handle missing values (mean, median, mode, drop)
+Feature engineering options (polynomial features, trigonometry features)
+Feature selection (via importance threshold)
+Remove outliers (yes/no)
+Remove multicollinearity (yes/no)
+
+For Clustering:
+
+Normalization (required: yes/no)
+Number of clusters (for algorithms that require it)
+
+For Time Series:
+
+Forecast horizon (fh)
+Seasonal period
+Enforce exogenous variables
+
+FR-3.3: Setup Confirmation
+
+Display configured setup in a summary table
+Show inferred data types
+Allow user to edit data types if incorrect
+"Initialize Setup" button to confirm and proceed
+
+3.2.4 Model Comparison & Selection
+FR-4.1: Compare Models Function
+
+One-click model comparison across all available algorithms
+Display results in sortable, interactive table showing:
+
+Model name
+Key metrics (accuracy, AUC, recall, F1 for classification; MAE, RMSE, R² for regression)
+Training time
+
+
+Highlight best-performing model by default
+Allow sorting by any metric column
+
+FR-4.2: Available Models Display
+
+Show all available models in a reference table before comparison
+Include model abbreviations and full names
+Allow filtering by model type (ensemble, linear, tree-based, etc.)
+
+FR-4.3: Model Selection
+
+Checkbox or radio selection for choosing models to analyze
+Support multiple model selection for comparison
+"Select Top N Models" quick action button
+
+3.2.5 Model Evaluation & Analysis
+FR-5.1: Individual Model Analysis
+
+Select a trained model to view detailed metrics
+Display performance metrics in formatted table
+Show metrics appropriate to problem type:
+
+Classification: Accuracy, AUC, Recall, Precision, F1, Kappa, MCC
+Regression: MAE, MSE, RMSE, R², RMSLE, MAPE
+Clustering: Silhouette Score, Calinski-Harabasz, Davies-Bouldin
+Time Series: MASE, RMSSE, MAE, RMSE
+
+
+
+FR-5.2: Visualization Suite
+For Classification:
+
+Confusion Matrix
+AUC-ROC Curve
+Precision-Recall Curve
+Class Prediction Error Plot
+Decision Boundary (for 2D datasets)
+Feature Importance Plot
+Learning Curve
+
+For Regression:
+
+Residuals Plot
+Prediction Error Plot
+Feature Importance
+Learning Curve
+Manifold Learning Plot
+
+For Clustering:
+
+Elbow Plot
+Silhouette Plot
+Distance Plot
+Distribution Plot
+
+For Time Series:
+
+Forecast Plot
+Diagnostics Plot
+In-sample Prediction Plot
+Residuals Plot
+
+For Anomaly Detection:
+
+t-SNE Visualization
+UMAP Visualization
+
+FR-5.3: Plot Display
+
+Dropdown to select plot type
+High-resolution plot rendering
+Download plot as PNG/SVG
+Interactive plots where applicable (using Plotly backend)
+
+3.2.6 Predictions
+FR-6.1: Test Set Predictions
+
+Display predictions on test set automatically
+Show predictions table with:
+
+Original features
+Actual values (if available)
+Predicted values
+Prediction confidence/probability (for classification)
+
+
+Download predictions as CSV
+
+FR-6.2: New Data Predictions (Optional/Future)
+
+Upload new data for predictions
+Use selected trained model
+Display and download results
+
+3.2.7 Model Download
+FR-7.1: Model Export
+
+Save selected model as pickle file (.pkl)
+Include preprocessing pipeline in saved model
+Provide download button with auto-generated filename
+Filename format: {problem_type}_{model_name}_{timestamp}.pkl
+
+FR-7.2: Model Metadata Export
+
+Download model configuration and metrics as JSON
+Include:
+
+Setup parameters
+Model hyperparameters
+Performance metrics
+Feature names and types
+Date created
+
+
+
+
+4. User Interface Requirements
+4.1 Layout Design
+UI-1: Multi-Step Workflow Interface
+
+Tabbed interface or wizard-style progression
+Clear step indicators (Step 1 of 6)
+Navigation buttons: "Next", "Back", "Reset"
+Persistent sidebar showing workflow progress
+
+UI-2: Responsive Design
+
+Desktop-first design (minimum 1280px width recommended)
+Support for tablet viewing (768px+)
+Collapsible sections for advanced options
+
+4.2 Component Structure
+Primary Interface Sections:
+
+Header Section
+
+Application title and logo
+Brief description
+Current workflow step indicator
+
+
+Upload Section (Step 1)
+
+File upload area (drag-and-drop + browse)
+Data preview table
+Dataset statistics cards
+
+
+Configuration Section (Step 2-3)
+
+Problem type selector
+Target column selector
+Setup parameters (basic and advanced)
+Setup summary display
+
+
+Model Training Section (Step 4)
+
+"Compare Models" action button
+Progress indicator during training
+Results table
+Model selection checkboxes
+
+
+Evaluation Section (Step 5)
+
+Model selector dropdown
+Metrics display table
+Visualization selector and display area
+Plot download buttons
+
+
+Export Section (Step 6)
+
+Selected model summary
+Download buttons (model + metadata)
+Success/completion message
+
+
+
+4.3 Visual Design Guidelines
+Color Scheme:
+
+Primary: Blue (#2563eb) - for action buttons and highlights
+Success: Green (#10b981) - for confirmations and positive metrics
+Warning: Orange (#f59e0b) - for warnings and alerts
+Error: Red (#ef4444) - for errors
+Neutral: Gray scale for backgrounds and text
+
+Typography:
+
+Headers: Bold, 18-24px
+Body text: Regular, 14-16px
+Metrics: Monospace font for numerical displays
+
+Interaction Patterns:
+
+Loading spinners for async operations
+Toast notifications for success/error messages
+Tooltips for parameter explanations
+Confirmation dialogs for destructive actions (reset workflow)
+
+
+5. Non-Functional Requirements
+5.1 Performance
+NFR-1: Response Time
+
+Data upload and preview: < 3 seconds for files up to 100MB
+Model comparison: Display progress; no timeout (can take minutes)
+Plot generation: < 5 seconds
+Model download: Instantaneous (<1 second to initiate)
+
+NFR-2: Scalability
+
+Support datasets up to 1 million rows and 1000 columns
+Handle up to 30 models in comparison
+Concurrent user support: 10+ users
+
+5.2 Reliability
+NFR-3: Error Handling
+
+Graceful error messages for all failure scenarios
+Automatic recovery suggestions
+Prevent data loss during errors
+Log errors for debugging
+
+NFR-4: Data Integrity
+
+Validate data at each step
+Prevent progression with invalid configurations
+Maintain data consistency through workflow
+
+5.3 Usability
+NFR-5: User Experience
+
+Maximum 3 clicks to reach any feature
+Clear, jargon-free labels
+Inline help text and tooltips
+Example datasets available for testing
+
+NFR-6: Accessibility
+
+Keyboard navigation support
+Screen reader compatible
+Color-blind friendly palettes
+High contrast mode option
+
+5.4 Security
+NFR-7: Data Privacy
+
+No data persistence on server (session-based only)
+Automatic session cleanup
+No data logging or tracking
+Secure file upload validation
+
+5.5 Compatibility
+NFR-8: Technical Requirements
+
+Python 3.8+
+PyCaret 3.x
+Gradio 4.x
+Modern browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
+
+
+6. Technical Architecture
+6.1 Technology Stack
+Frontend:
+
+Gradio 4.x for UI components
+HTML/CSS/JavaScript (managed by Gradio)
+
+Backend:
+
+Python 3.8+
+PyCaret 3.x (with all dependencies)
+Pandas, NumPy for data manipulation
+Scikit-learn (via PyCaret)
+
+Storage:
+
+Session-based temporary file storage
+No database requirement
+
+6.2 Key Components
+
+Data Handler Module
+
+File upload and validation
+Data preprocessing
+Format conversion
+
+
+PyCaret Integration Module
+
+Setup initialization
+Model comparison wrapper
+Prediction generation
+Model serialization
+
+
+Visualization Module
+
+Plot generation using PyCaret's plot_model
+Plot format conversion
+Interactive plot support
+
+
+State Management
+
+Session state for workflow tracking
+Model storage during session
+Configuration persistence
+
+
+
+6.3 Data Flow
+User Upload → Validation → Preview Display
+                ↓
+        Configuration Selection
+                ↓
+        PyCaret Setup Initialization
+                ↓
+        Model Training (compare_models)
+                ↓
+        Results Display & Selection
+                ↓
+        Model Evaluation (plot_model, metrics)
+                ↓
+        Model Export (save_model)
+
+7. User Stories
+Epic 1: Data Upload and Exploration
+US-1.1: As a data scientist, I want to upload my CSV file so that I can quickly start experimenting with ML models.
+US-1.2: As a business analyst, I want to see a preview of my data after upload so that I can verify it loaded correctly.
+US-1.3: As a user, I want to see basic statistics about my dataset so that I understand its characteristics before modeling.
+Epic 2: Model Configuration
+US-2.1: As a data scientist, I want to select the type of ML problem (classification, regression, etc.) so that PyCaret uses the appropriate algorithms.
+US-2.2: As a user, I want to select my target column from a dropdown so that the model knows what to predict.
+US-2.3: As an advanced user, I want to configure preprocessing options so that I can customize the data preparation pipeline.
+Epic 3: Model Training and Comparison
+US-3.1: As a user, I want to compare all available models with one click so that I can identify the best performer quickly.
+US-3.2: As a data scientist, I want to see performance metrics in a sortable table so that I can easily compare models by different criteria.
+US-3.3: As a user, I want to see training progress so that I know the system is working on large datasets.
+Epic 4: Model Evaluation
+US-4.1: As a data scientist, I want to view detailed metrics for a selected model so that I can assess its performance thoroughly.
+US-4.2: As a user, I want to generate visualizations (confusion matrix, feature importance, etc.) so that I can better understand model behavior.
+US-4.3: As a user, I want to download visualizations so that I can include them in reports and presentations.
+Epic 5: Model Export and Deployment
+US-5.1: As a data scientist, I want to download the trained model so that I can deploy it in production.
+US-5.2: As a user, I want to download model metadata so that I can document the model configuration.
+US-5.3: As a developer, I want the downloaded model to include the preprocessing pipeline so that I can make predictions on new data without additional setup.
+
+8. Success Criteria
+8.1 Functional Success Criteria
+
+✅ User can complete full workflow from upload to download in < 5 minutes for small datasets
+✅ All five problem types (classification, regression, clustering, anomaly detection, time series) are fully supported
+✅ At least 90% of common use cases can be handled without advanced configuration
+✅ Downloaded models can be loaded and used for predictions in a separate Python script
+
+8.2 User Experience Success Criteria
+
+✅ 90% of users can complete a workflow without external help or documentation
+✅ Average user satisfaction score > 4.0/5.0
+✅ < 10% error rate during typical usage
+
+8.3 Performance Success Criteria
+
+✅ App loads in < 5 seconds
+✅ Data preview appears in < 3 seconds for files up to 100MB
+✅ Model comparison completes within reasonable time (< 5 minutes for 10 models on 10k rows)
