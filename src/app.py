@@ -509,7 +509,7 @@ def create_app():
         # Step 2: Problem Type Selection
         def process_problem_type(problem_type, state):
             description, choices = handle_problem_type_selection(problem_type, state, data_handler)
-            return description, gr.Dropdown.update(choices=choices, value=None)
+            return description, gr.update(choices=choices, value=None)
         
         problem_type.change(
             fn=process_problem_type,
@@ -565,7 +565,7 @@ def create_app():
         # Step 4: Model Comparison
         def compare_all_models(state):
             results, status, choices = handle_model_comparison(state, pycaret_wrapper)
-            return results, status, gr.CheckboxGroup.update(choices=choices, value=[])
+            return results, status, gr.update(choices=choices, value=[])
         
         compare_btn.click(
             fn=compare_all_models,
@@ -580,7 +580,7 @@ def create_app():
             )
             return (
                 metrics,
-                gr.Dropdown.update(choices=plot_choices, value=None),
+                gr.update(choices=plot_choices, value=None),
                 ""
             )
         
@@ -593,8 +593,8 @@ def create_app():
         # Update model selector when models are selected
         def update_model_selector(selected_models, state):
             if selected_models:
-                return gr.Dropdown.update(choices=selected_models, value=selected_models[0] if selected_models else None)
-            return gr.Dropdown.update(choices=[], value=None)
+                return gr.update(choices=selected_models, value=selected_models[0] if selected_models else None)
+            return gr.update(choices=[], value=None)
         
         model_selection.change(
             fn=update_model_selector,
@@ -653,8 +653,8 @@ def create_app():
         # Update export model selector when models are available
         def update_export_selector(selected_models, state):
             if selected_models:
-                return gr.Dropdown.update(choices=selected_models, value=selected_models[0] if selected_models else None)
-            return gr.Dropdown.update(choices=[], value=None)
+                return gr.update(choices=selected_models, value=selected_models[0] if selected_models else None)
+            return gr.update(choices=[], value=None)
         
         model_selection.change(
             fn=update_export_selector,

@@ -87,10 +87,12 @@ See `IMPLEMENTATION_PLAN.md` for detailed implementation plan and architecture.
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9, 3.10, or 3.11 (PyCaret does not support Python 3.12+ yet)
 - PyCaret 3.x
 - Gradio 4.x
 - See `pyproject.toml` for full dependency list
+
+**Note**: If you have Python 3.12+, you'll need to use Python 3.11 or earlier. You can use `uv` to manage multiple Python versions.
 
 ## License
 

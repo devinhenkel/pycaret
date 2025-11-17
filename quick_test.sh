@@ -24,9 +24,30 @@ fi
 echo "✅ uv found: $(uv --version)"
 echo ""
 
+# Check Python version
+PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 12 ]; then
+    echo "⚠️  Warning: Python $PYTHON_VERSION detected"
+    echo "   PyCaret requires Python 3.9, 3.10, or 3.11"
+    echo "   uv will automatically use a compatible Python version"
+    echo ""
+fi
+
 # Sync dependencies (creates venv and installs packages)
 echo "📦 Syncing dependencies..."
-uv sync > /dev/null 2>&1
+# Use Python 3.11 if available, otherwise let uv choose compatible version
+if uv python list 2>/dev/null | grep -q "3.11"; then
+    echo "   Using Python 3.11 (PyCaret compatible)"
+    uv sync --python 3.11 > /dev/null 2>&1
+else
+    echo "   Installing Python 3.11..."
+    uv python install 3.11 > /dev/null 2>&1
+    uv sync --python 3.11 > /dev/null 2>&1
+fi
+
 if [ $? -eq 0 ]; then
     echo "✅ Dependencies synced"
 else
@@ -37,15 +58,15 @@ echo ""
 # Create sample datasets if they don't exist
 if [ ! -f "examples/sample_datasets/classification_sample.csv" ]; then
     echo "📊 Creating sample datasets..."
-    uv run python examples/sample_datasets/create_sample_data.py
+    uv run --python 3.11 python examples/sample_datasets/create_sample_data.py
     echo ""
 fi
 
 # Check if dependencies are installed
 echo "📦 Verifying dependencies..."
-if ! uv run python -c "import gradio" 2>/dev/null; then
-    echo "⚠️  Gradio not found. Re-syncing dependencies..."
-    uv sync
+if ! uv run --python 3.11 python -c "import gradio, pycaret" 2>/dev/null; then
+    echo "⚠️  Dependencies not found. Re-syncing..."
+    uv sync --python 3.11
     echo "✅ Dependencies installed"
 else
     echo "✅ Dependencies verified"
@@ -61,5 +82,5 @@ echo "📝 Test dataset available at:"
 echo "   examples/sample_datasets/classification_sample.csv"
 echo ""
 
-uv run python main.py
+uv run --python 3.11 python main.py
 
