@@ -242,27 +242,82 @@ def handle_model_comparison(
         return None, f"❌ Error comparing models: {str(e)}", []
 
 
-def handle_model_evaluation(
+def handle_predictions_generation(
     model_name: str,
     state: StateManager,
-    pycaret_wrapper: PyCaretWrapper,
-    viz_manager: VisualizationManager
-) -> Tuple[Dict[str, Any], list, str]:
+    pycaret_wrapper: PyCaretWrapper
+) -> Tuple[pd.DataFrame, str]:
     """
-    Evaluate a selected model.
+    Generate predictions for the test set using the current model.
     
     Returns:
-        Tuple of (metrics_dict, plot_choices_list, status_message)
+        Tuple of (predictions_dataframe, status_message)
     """
     if not model_name:
-        return {}, [], ""
+        return None, ""
     
     try:
         # Ensure wrapper has setup and problem type
         problem_type = state.get_problem_type()
         setup = state.get_pycaret_setup()
         if setup is None:
-            return {}, [], "❌ Please initialize setup first (Step 3)."
+            return None, "❌ Please initialize setup first (Step 3)."
+        
+        pycaret_wrapper.setup = setup
+        pycaret_wrapper.problem_type = problem_type
+        
+        # Get model
+        model = state.get_trained_model(model_name)
+        if model is None:
+            return None, "❌ Model not found. Please select a model first."
+        
+        # Generate predictions on test set (data=None means use test set)
+        predictions, error = pycaret_wrapper.predict_model(model, data=None)
+        
+        if error:
+            return None, f"❌ Error generating predictions: {error}"
+        
+        if predictions is None or predictions.empty:
+            return None, "❌ No predictions generated."
+        
+        # Store predictions in state
+        state.set_predictions(predictions)
+        
+        # Limit display to first 1000 rows for performance
+        display_predictions = predictions.head(1000) if len(predictions) > 1000 else predictions
+        
+        status = f"✅ Generated predictions for {len(predictions)} samples."
+        if len(predictions) > 1000:
+            status += f" Showing first 1000 rows."
+        
+        return display_predictions, status
+        
+    except Exception as e:
+        import traceback
+        return None, f"❌ Error: {str(e)}\n{traceback.format_exc()}"
+
+
+def handle_model_evaluation(
+    model_name: str,
+    state: StateManager,
+    pycaret_wrapper: PyCaretWrapper,
+    viz_manager: VisualizationManager
+) -> Tuple[Dict[str, Any], list, pd.DataFrame, str]:
+    """
+    Evaluate a selected model.
+    
+    Returns:
+        Tuple of (metrics_dict, plot_choices_list, predictions_dataframe, status_message)
+    """
+    if not model_name:
+        return {}, [], None, ""
+    
+    try:
+        # Ensure wrapper has setup and problem type
+        problem_type = state.get_problem_type()
+        setup = state.get_pycaret_setup()
+        if setup is None:
+            return {}, [], None, "❌ Please initialize setup first (Step 3)."
         
         pycaret_wrapper.setup = setup
         pycaret_wrapper.problem_type = problem_type
@@ -274,7 +329,7 @@ def handle_model_evaluation(
             # Create model if not already trained
             model, error = pycaret_wrapper.get_model(model_name)
             if error:
-                return {}, [], f"❌ Error: {error}"
+                return {}, [], None, f"❌ Error: {error}"
             
             # Store model
             state.add_trained_model(model_name, model)
@@ -337,11 +392,19 @@ def handle_model_evaluation(
         # Store metrics in state
         state.set_model_metrics(model_name, metrics)
         
-        return metrics, plot_choices, f"✅ Model {model_name} loaded for evaluation."
+        # Generate predictions on test set
+        predictions, pred_error = handle_predictions_generation(model_name, state, pycaret_wrapper)
+        if pred_error and "Error" in pred_error:
+            # If predictions fail, still return metrics but log the error
+            status = f"✅ Model {model_name} loaded for evaluation. ⚠️ {pred_error}"
+        else:
+            status = f"✅ Model {model_name} loaded for evaluation."
+        
+        return metrics, plot_choices, predictions, status
         
     except Exception as e:
         import traceback
-        return {}, [], f"❌ Error: {str(e)}\n{traceback.format_exc()}"
+        return {}, [], None, f"❌ Error: {str(e)}\n{traceback.format_exc()}"
 
 
 def handle_plot_generation(
@@ -354,6 +417,7 @@ def handle_plot_generation(
     
     Returns:
         Tuple of (plot_object, status_message)
+        - plot_object can be: Plotly figure, matplotlib figure, or file path string
     """
     if not plot_type:
         return None, ""
@@ -367,15 +431,27 @@ def handle_plot_generation(
         if model is None:
             return None, "❌ Model not found."
         
-        plot, error = viz_manager.generate_plot(model, plot_type)
+        plot_obj, error = viz_manager.generate_plot(model, plot_type)
         
         if error:
+            # Return None explicitly - Gradio will handle None gracefully
             return None, f"❌ Plot Error: {error}"
         
-        return plot, f"✅ Generated {plot_type} plot."
+        if plot_obj is None:
+            return None, "❌ Failed to generate plot. Please try a different plot type."
+        
+        # If it's a file path string, verify it exists
+        if isinstance(plot_obj, str):
+            import os
+            if not os.path.exists(plot_obj):
+                return None, f"❌ Plot file was not created successfully."
+        
+        return plot_obj, f"✅ Generated {plot_type} plot."
         
     except Exception as e:
-        return None, f"❌ Error generating plot: {str(e)}"
+        import traceback
+        error_msg = f"❌ Error generating plot: {str(e)}"
+        return None, error_msg
 
 
 def handle_model_export(
@@ -634,19 +710,20 @@ def create_app():
         
         # Step 5: Model Evaluation
         def evaluate_model(model_name, state):
-            metrics, plot_choices, status = handle_model_evaluation(
+            metrics, plot_choices, predictions, status = handle_model_evaluation(
                 model_name, state, pycaret_wrapper, viz_manager
             )
             return (
                 metrics,
                 gr.update(choices=plot_choices, value=None),
-                None  # Clear plot when model changes
+                None,  # Clear plot when model changes
+                predictions if predictions is not None else None
             )
         
         model_selector.change(
             fn=evaluate_model,
             inputs=[model_selector, state_component],
-            outputs=[model_metrics, plot_type, plot_display]
+            outputs=[model_metrics, plot_type, plot_display, predictions_table]
         )
         
         # Update model selector when models are selected
