@@ -6,7 +6,6 @@ Manages model serialization and download functionality.
 """
 
 from typing import Dict, Any, Optional, Tuple
-import pickle
 import json
 from datetime import datetime
 import os
@@ -32,7 +31,8 @@ class ModelManager:
         output_dir: str = "models"
     ) -> Tuple[str, Optional[str]]:
         """
-        Save a trained model as a pickle file.
+        Save a trained model using PyCaret's save_model function.
+        This ensures the preprocessing pipeline is included.
         
         Args:
             model: Trained model object to save
@@ -41,25 +41,53 @@ class ModelManager:
             output_dir: Directory to save the model
             
         Returns:
-            Tuple of (file_path, error_message)
+            Tuple of (absolute_file_path, error_message)
         """
         try:
             # Create output directory if it doesn't exist
             os.makedirs(output_dir, exist_ok=True)
             
-            # Generate filename
+            # Generate filename (without .pkl extension - PyCaret will add it)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{problem_type}_{model_name}_{timestamp}.pkl"
-            file_path = os.path.join(output_dir, filename)
+            filename_base = f"{problem_type}_{model_name}_{timestamp}"
+            file_path_base = os.path.join(output_dir, filename_base)
             
-            # Save model
-            with open(file_path, 'wb') as f:
-                pickle.dump(model, f)
+            # Use PyCaret's save_model to include preprocessing pipeline
+            # Import the appropriate save_model function
+            if problem_type == 'classification':
+                from pycaret.classification import save_model as pycaret_save_model
+            elif problem_type == 'regression':
+                from pycaret.regression import save_model as pycaret_save_model
+            elif problem_type == 'clustering':
+                from pycaret.clustering import save_model as pycaret_save_model
+            elif problem_type == 'anomaly_detection':
+                from pycaret.anomaly import save_model as pycaret_save_model
+            elif problem_type == 'time_series':
+                from pycaret.time_series import save_model as pycaret_save_model
+            else:
+                return None, f"Unsupported problem type: {problem_type}"
             
-            return file_path, None
+            # Save using PyCaret (includes preprocessing pipeline)
+            # PyCaret automatically adds .pkl extension
+            pycaret_save_model(model, file_path_base, verbose=False)
+            
+            # PyCaret saves with .pkl extension
+            file_path = file_path_base + '.pkl'
+            abs_path = os.path.abspath(file_path)
+            
+            # Verify file was created
+            if not os.path.exists(abs_path):
+                # Check if file exists without .pkl (shouldn't happen, but just in case)
+                if os.path.exists(file_path_base):
+                    abs_path = os.path.abspath(file_path_base)
+                else:
+                    return None, f"Model file was not created. Expected: {abs_path}"
+            
+            return abs_path, None
             
         except Exception as e:
-            return None, f"Error saving model: {str(e)}"
+            import traceback
+            return None, f"Error saving model: {str(e)}\n{traceback.format_exc()}"
     
     def generate_metadata(
         self,
@@ -122,7 +150,14 @@ class ModelManager:
             with open(file_path, 'w') as f:
                 json.dump(metadata, f, indent=2, default=str)
             
-            return file_path, None
+            # Convert to absolute path for Gradio
+            abs_path = os.path.abspath(file_path)
+            
+            # Verify file was created
+            if not os.path.exists(abs_path):
+                return None, "Metadata file was not created"
+            
+            return abs_path, None
             
         except Exception as e:
             return None, f"Error saving metadata: {str(e)}"

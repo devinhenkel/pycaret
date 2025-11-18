@@ -51,8 +51,8 @@ pip install -e ".[dev]"
 ### Using uv (Recommended)
 
 ```bash
-# Run the application (automatically uses project environment)
-uv run python main.py
+# Run the application with Python 3.11 (required)
+uv run --python 3.11 python main.py
 ```
 
 ### Using pip
@@ -87,12 +87,12 @@ See `IMPLEMENTATION_PLAN.md` for detailed implementation plan and architecture.
 
 ## Requirements
 
-- Python 3.9, 3.10, or 3.11 (PyCaret does not support Python 3.12+ yet)
+- **Python 3.11** (required - PyCaret only supports Python 3.9, 3.10, and 3.11, but 3.11 is recommended)
 - PyCaret 3.x
 - Gradio 4.x
 - See `pyproject.toml` for full dependency list
 
-**Note**: If you have Python 3.12+, you'll need to use Python 3.11 or earlier. You can use `uv` to manage multiple Python versions.
+**Note**: If you have Python 3.12+, `uv` will automatically install and use Python 3.11. The project is configured to use Python 3.11.
 
 ## License
 

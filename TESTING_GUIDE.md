@@ -16,9 +16,11 @@ uv sync --extra dev
 ```
 
 **Note**: 
+- **Python 3.11 is required** (PyCaret only supports Python 3.9, 3.10, and 3.11)
 - If you don't have `uv` installed, install it first: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- `uv` will automatically install Python 3.11 if needed: `uv python install 3.11`
 - PyCaret installation can take several minutes as it installs many ML libraries.
-- `uv sync` will create a virtual environment and install all dependencies automatically.
+- `uv sync --python 3.11` will create a virtual environment with Python 3.11 and install all dependencies.
 
 ### 2. Create a Test Dataset
 
@@ -35,8 +37,8 @@ Or use your own CSV file with:
 ### 3. Run the Application
 
 ```bash
-# Using uv (recommended - runs in project environment)
-uv run python main.py
+# Using uv with Python 3.11 (required)
+uv run --python 3.11 python main.py
 
 # Or activate the environment and run directly
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
@@ -303,11 +305,11 @@ This dataset contains:
 ## Quick Test Command
 
 ```bash
-# One-liner to install and run with uv:
-uv sync && uv run python main.py
+# One-liner to install and run with uv (Python 3.11):
+uv sync --python 3.11 && uv run --python 3.11 python main.py
 
 # Or if uv is not in PATH:
-curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && uv run python main.py
+curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync --python 3.11 && uv run --python 3.11 python main.py
 ```
 
 Then open `http://localhost:7860` in your browser and start testing!

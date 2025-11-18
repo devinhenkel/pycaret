@@ -2,6 +2,8 @@
 
 This project uses `uv` as the recommended package manager. `uv` is a fast Python package installer and resolver written in Rust.
 
+**Important**: This project requires **Python 3.11** (PyCaret requirement). `uv` will automatically manage Python 3.11 for you.
+
 ## Why uv?
 
 - ⚡ **Fast**: 10-100x faster than pip
@@ -34,22 +36,22 @@ export PATH="$HOME/.cargo/bin:$PATH"
 ### Sync Dependencies
 
 ```bash
-# Install all dependencies (creates .venv automatically)
-uv sync
+# Install all dependencies with Python 3.11 (creates .venv automatically)
+uv sync --python 3.11
 
 # Install with dev dependencies
-uv sync --extra dev
+uv sync --python 3.11 --extra dev
 ```
 
 ### Run Commands
 
 ```bash
-# Run Python scripts in project environment
-uv run python main.py
+# Run Python scripts in project environment (Python 3.11)
+uv run --python 3.11 python main.py
 
 # Run any command in project environment
-uv run pytest
-uv run python -m black .
+uv run --python 3.11 pytest
+uv run --python 3.11 python -m black .
 ```
 
 ### Add Dependencies
@@ -84,27 +86,27 @@ cd pycaret
 # 2. Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 3. Sync dependencies
-uv sync
+# 3. Sync dependencies with Python 3.11
+uv sync --python 3.11
 
 # 4. Run the application
-uv run python main.py
+uv run --python 3.11 python main.py
 ```
 
 ### Daily Development
 
 ```bash
-# Run the app
-uv run python main.py
+# Run the app (Python 3.11)
+uv run --python 3.11 python main.py
 
 # Run tests
-uv run pytest
+uv run --python 3.11 pytest
 
 # Format code
-uv run black .
+uv run --python 3.11 black .
 
 # Lint code
-uv run ruff check .
+uv run --python 3.11 ruff check .
 ```
 
 ## Virtual Environment
@@ -139,12 +141,12 @@ If you're migrating from pip:
 
 2. **Sync with uv**:
    ```bash
-   uv sync
+   uv sync --python 3.11
    ```
 
 3. **Update your workflow**:
-   - Replace `pip install -e .` with `uv sync`
-   - Replace `python script.py` with `uv run python script.py`
+   - Replace `pip install -e .` with `uv sync --python 3.11`
+   - Replace `python script.py` with `uv run --python 3.11 python script.py`
 
 ## Troubleshooting
 
@@ -161,9 +163,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### Dependency conflicts
 
 ```bash
-# Clear cache and re-sync
+# Clear cache and re-sync with Python 3.11
 rm -rf .venv uv.lock
-uv sync
+uv sync --python 3.11
 ```
 
 ### Slow sync

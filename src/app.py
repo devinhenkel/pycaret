@@ -6,6 +6,7 @@ Creates and configures the Gradio interface for the PyCaret ML Workflow Manager.
 
 import gradio as gr
 import pandas as pd
+import os
 from typing import Tuple, Optional, Dict, Any
 from src.modules.state_manager import StateManager
 from src.modules.data_handler import DataHandler
@@ -257,6 +258,15 @@ def handle_model_evaluation(
         return {}, [], ""
     
     try:
+        # Ensure wrapper has setup and problem type
+        problem_type = state.get_problem_type()
+        setup = state.get_pycaret_setup()
+        if setup is None:
+            return {}, [], "❌ Please initialize setup first (Step 3)."
+        
+        pycaret_wrapper.setup = setup
+        pycaret_wrapper.problem_type = problem_type
+        
         # Get or create model
         model = state.get_trained_model(model_name)
         
@@ -272,17 +282,66 @@ def handle_model_evaluation(
         # Set current model
         state.set_current_model(model_name)
         
+        # Ensure visualization manager has setup and problem type
+        if setup is not None:
+            viz_manager.set_setup(setup)
+        if problem_type:
+            viz_manager.set_problem_type(problem_type)
+        
         # Get available plots
-        problem_type = state.get_problem_type()
         plot_choices = viz_manager.get_available_plots(problem_type)
         
-        # Get metrics (placeholder - would need to pull from PyCaret)
-        metrics = {"status": "Model loaded successfully"}
+        # Get metrics using PyCaret's pull() function
+        metrics_df, error = pycaret_wrapper.get_model_metrics()
+        
+        if error:
+            # If metrics retrieval fails, return basic info
+            metrics = {
+                "status": "Model loaded successfully",
+                "note": f"Could not retrieve metrics: {error}",
+                "model_name": model_name
+            }
+        else:
+            # Convert DataFrame to dictionary for JSON display
+            # Handle different DataFrame structures
+            if metrics_df is not None and not metrics_df.empty:
+                # Convert DataFrame to dict, ensuring all keys are strings for JSON serialization
+                # PyCaret's pull() typically returns a single-row DataFrame with metric names as columns
+                if len(metrics_df) == 1:
+                    # Single row: convert to dict with string keys
+                    row_dict = metrics_df.iloc[0].to_dict()
+                    metrics = {str(k): v for k, v in row_dict.items()}
+                else:
+                    # Multiple rows: convert to list of records (each record is a dict)
+                    records = metrics_df.to_dict('records')
+                    # Ensure all keys in each record are strings
+                    metrics = {
+                        "metrics_table": [{str(k): v for k, v in record.items()} for record in records]
+                    }
+                    # Also add a summary with string keys
+                    if hasattr(metrics_df, 'index'):
+                        summary = {}
+                        for idx, row in metrics_df.iterrows():
+                            summary[str(idx)] = {str(k): v for k, v in row.to_dict().items()}
+                        metrics["summary"] = summary
+                
+                # Add model name for reference
+                metrics["model_name"] = model_name
+            else:
+                metrics = {
+                    "status": "Model loaded successfully",
+                    "note": "No metrics available",
+                    "model_name": model_name
+                }
+        
+        # Store metrics in state
+        state.set_model_metrics(model_name, metrics)
         
         return metrics, plot_choices, f"✅ Model {model_name} loaded for evaluation."
         
     except Exception as e:
-        return {}, [], f"❌ Error: {str(e)}"
+        import traceback
+        return {}, [], f"❌ Error: {str(e)}\n{traceback.format_exc()}"
 
 
 def handle_plot_generation(
@@ -486,11 +545,11 @@ def create_app():
                     label="Select Model to Export",
                 )
                 model_summary = gr.JSON(label="Model Summary")
+                download_model_file = gr.File(label="Download Model (.pkl)", visible=True)
+                download_metadata_file = gr.File(label="Download Metadata (.json)", visible=True)
                 with gr.Row():
-                    download_model_file = gr.File(label="Download Model (.pkl)", visible=False)
-                    download_metadata_file = gr.File(label="Download Metadata (.json)", visible=False)
-                download_model_btn = gr.Button("Download Model (.pkl)", variant="primary")
-                download_metadata_btn = gr.Button("Download Metadata (.json)", variant="secondary")
+                    download_model_btn = gr.Button("Download Model (.pkl)", variant="primary")
+                    download_metadata_btn = gr.Button("Download Metadata (.json)", variant="secondary")
                 export_status = gr.Markdown("")
         
         # Event Handlers
@@ -581,13 +640,13 @@ def create_app():
             return (
                 metrics,
                 gr.update(choices=plot_choices, value=None),
-                ""
+                None  # Clear plot when model changes
             )
         
         model_selector.change(
             fn=evaluate_model,
             inputs=[model_selector, state_component],
-            outputs=[model_metrics, plot_type, gr.Markdown(visible=False)]
+            outputs=[model_metrics, plot_type, plot_display]
         )
         
         # Update model selector when models are selected
@@ -605,12 +664,13 @@ def create_app():
         # Plot Generation
         def generate_plot(plot_type_val, state):
             plot, status = handle_plot_generation(plot_type_val, state, viz_manager)
-            return plot, status
+            # Return plot and empty status (status can be shown elsewhere if needed)
+            return plot
         
         plot_type.change(
             fn=generate_plot,
             inputs=[plot_type, state_component],
-            outputs=[plot_display, gr.Markdown(visible=False)]
+            outputs=[plot_display]
         )
         
         # Step 6: Model Export
@@ -628,20 +688,40 @@ def create_app():
         # Download buttons
         def download_model(model_name, state):
             if not model_name:
+                export_status.value = "❌ Please select a model to export."
                 return None
+            
             summary, model_path, metadata_path = handle_model_export(model_name, state, model_manager)
-            return model_path
+            
+            if model_path and os.path.exists(model_path):
+                export_status.value = f"✅ Model ready for download!"
+                return model_path
+            else:
+                export_status.value = f"❌ Export failed. {model_path if model_path else 'Model path is None'}"
+                return None
         
         def download_metadata(model_name, state):
             if not model_name:
+                export_status.value = "❌ Please select a model to export."
                 return None
+            
             summary, model_path, metadata_path = handle_model_export(model_name, state, model_manager)
-            return metadata_path
+            
+            if metadata_path and os.path.exists(metadata_path):
+                export_status.value = f"✅ Metadata ready for download!"
+                return metadata_path
+            else:
+                export_status.value = f"❌ Metadata export failed."
+                return None
         
         download_model_btn.click(
             fn=download_model,
             inputs=[export_model_selector, state_component],
             outputs=[download_model_file]
+        ).then(
+            fn=lambda: export_status.value if 'export_status' in locals() else "",
+            inputs=None,
+            outputs=[export_status]
         )
         
         download_metadata_btn.click(

@@ -24,29 +24,25 @@ fi
 echo "✅ uv found: $(uv --version)"
 echo ""
 
-# Check Python version
-PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
-PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-
-if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 12 ]; then
-    echo "⚠️  Warning: Python $PYTHON_VERSION detected"
-    echo "   PyCaret requires Python 3.9, 3.10, or 3.11"
-    echo "   uv will automatically use a compatible Python version"
-    echo ""
+# Check and ensure Python 3.11 is available
+echo "🐍 Checking Python 3.11 availability..."
+if ! uv python list 2>/dev/null | grep -q "3.11"; then
+    echo "   Installing Python 3.11 (required for PyCaret)..."
+    uv python install 3.11 > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to install Python 3.11"
+        echo "   Please install Python 3.11 manually or check your internet connection"
+        exit 1
+    fi
+    echo "✅ Python 3.11 installed"
+else
+    echo "✅ Python 3.11 available"
 fi
+echo ""
 
 # Sync dependencies (creates venv and installs packages)
-echo "📦 Syncing dependencies..."
-# Use Python 3.11 if available, otherwise let uv choose compatible version
-if uv python list 2>/dev/null | grep -q "3.11"; then
-    echo "   Using Python 3.11 (PyCaret compatible)"
-    uv sync --python 3.11 > /dev/null 2>&1
-else
-    echo "   Installing Python 3.11..."
-    uv python install 3.11 > /dev/null 2>&1
-    uv sync --python 3.11 > /dev/null 2>&1
-fi
+echo "📦 Syncing dependencies with Python 3.11..."
+uv sync --python 3.11 > /dev/null 2>&1
 
 if [ $? -eq 0 ]; then
     echo "✅ Dependencies synced"

@@ -7,6 +7,9 @@ Supports multiple plot types based on problem type.
 
 from typing import Dict, Any, Optional, List, Tuple
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for server environments
+import matplotlib.pyplot as plt
 
 
 class VisualizationManager:
@@ -132,10 +135,46 @@ class VisualizationManager:
             else:
                 return None, f"Unsupported problem type: {pt}"
             
-            # Use plotly backend for interactive plots
-            plot_kwargs = {'plot': plot_type, 'display_format': 'plotly', **kwargs}
-            plot = plot_model(model, **plot_kwargs)
-            return plot, None
+            # Generate plot - PyCaret creates matplotlib figures but returns None
+            # We need to capture the figure after plot_model is called
+            plot_kwargs = {'plot': plot_type, 'save': False, **kwargs}
+            
+            # Clear any existing figures to avoid conflicts
+            plt.close('all')
+            
+            # Call plot_model - it creates a figure but returns None
+            plot_model(model, **plot_kwargs)
+            
+            # Get the current matplotlib figure (created by plot_model)
+            fig = plt.gcf()
+            
+            # Verify we got a figure
+            if fig is None or not hasattr(fig, 'savefig'):
+                return None, f"Failed to generate plot. PyCaret may not have created a figure for plot type '{plot_type}'."
+            
+            # Ensure figure has content and is properly formatted
+            axes = fig.get_axes()
+            if len(axes) == 0:
+                return None, f"Plot figure is empty. Plot type '{plot_type}' may not be supported for this model."
+            
+            # Apply tight layout to prevent clipping
+            try:
+                fig.tight_layout(pad=1.0)
+            except Exception:
+                # Some plots may not support tight_layout, try adjust_subplots instead
+                try:
+                    fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+                except Exception:
+                    pass  # If both fail, continue anyway
+            
+            # Ensure figure is properly rendered (important for Gradio display)
+            try:
+                fig.canvas.draw()
+            except Exception:
+                pass  # Some backends may not support draw()
+            
+            # Return the figure - Gradio's gr.Plot will handle displaying it
+            return fig, None
             
         except Exception as e:
             return None, f"Error generating plot {plot_type}: {str(e)}"

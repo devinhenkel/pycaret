@@ -17,22 +17,24 @@ This script will:
 ### Option 2: Manual Steps
 
 ```bash
-# 1. Install dependencies (creates virtual environment automatically)
-uv sync
+# 1. Install dependencies with Python 3.11 (creates virtual environment automatically)
+uv sync --python 3.11
 
 # 2. Create sample datasets (if needed)
-uv run python examples/sample_datasets/create_sample_data.py
+uv run --python 3.11 python examples/sample_datasets/create_sample_data.py
 
-# 3. Run the application
-uv run python main.py
+# 3. Run the application (with Python 3.11)
+uv run --python 3.11 python main.py
 ```
 
-**Note**: If you don't have `uv` installed:
-```bash
-# Install uv first
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# Then follow steps above
-```
+**Note**: 
+- This project requires **Python 3.11** (PyCaret requirement)
+- If you don't have `uv` installed:
+  ```bash
+  # Install uv first
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+- `uv` will automatically install Python 3.11 if needed
 
 ## What to Test
 
