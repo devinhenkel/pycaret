@@ -11,17 +11,6 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for server environments
 import matplotlib.pyplot as plt
-import base64
-from io import BytesIO
-
-# Try to import plotly for interactive plots
-try:
-    import plotly.graph_objects as go
-    import plotly.tools as ptools
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-    ptools = None
 
 
 class VisualizationManager:
@@ -193,47 +182,9 @@ class VisualizationManager:
                 # Some backends may not support draw()
                 pass
             
-            # Try to convert matplotlib figure to Plotly if available.
-            # Plotly works best with Gradio's gr.Plot component and keeps styling consistent.
-            if PLOTLY_AVAILABLE:
-                try:
-                    buffer = BytesIO()
-                    fig.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
-                    buffer.seek(0)
-                    
-                    img_b64 = base64.b64encode(buffer.read()).decode('utf-8')
-                    buffer.close()
-                    
-                    plotly_fig = go.Figure()
-                    plotly_fig.add_layout_image(
-                        dict(
-                            source=f"data:image/png;base64,{img_b64}",
-                            xref="paper",
-                            yref="paper",
-                            x=0,
-                            y=1,
-                            sizex=1,
-                            sizey=1,
-                            sizing="contain",
-                            layer="below"
-                        )
-                    )
-                    plotly_fig.update_xaxes(visible=False)
-                    plotly_fig.update_yaxes(visible=False)
-                    plotly_fig.update_layout(
-                        margin=dict(l=0, r=0, t=0, b=0),
-                        xaxis=dict(constrain='domain'),
-                        yaxis=dict(scaleanchor='x', scaleratio=1)
-                    )
-                    
-                    plt.close(fig)
-                    return plotly_fig, None
-                    
-                except Exception:
-                    # If conversion fails, fall through to matplotlib return
-                    pass
-            
-            # Fallback: return matplotlib figure directly (Gradio can render it)
+            # Return matplotlib figure directly - Gradio's gr.Plot handles matplotlib figures natively
+            # and this is the most reliable approach. The figure should NOT be closed here as Gradio
+            # needs the figure object to render it properly.
             return fig, None
             
         except Exception as e:
