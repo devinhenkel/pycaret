@@ -741,7 +741,12 @@ def create_app():
         # Plot Generation
         def generate_plot(plot_type_val, state):
             plot, status = handle_plot_generation(plot_type_val, state, viz_manager)
-            # Return plot and empty status (status can be shown elsewhere if needed)
+            # Debug: Print what we're returning
+            if plot is None:
+                print(f"⚠️ Plot is None. Status: {status}")
+            else:
+                print(f"✅ Returning plot object: {type(plot)}")
+            # Return plot object directly - Gradio's gr.Plot will handle it
             return plot
         
         plot_type.change(

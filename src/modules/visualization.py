@@ -138,17 +138,31 @@ class VisualizationManager:
             
             # Generate plot - PyCaret creates matplotlib figures but returns None
             # We need to capture the figure after plot_model is called
-            plot_kwargs = {'plot': plot_type, 'save': False, 'display': False, **kwargs}
+            # Force matplotlib backend by setting display_format='text' or system='False'
+            plot_kwargs = {
+                'plot': plot_type, 
+                'save': False,
+                'system': False,  # Prevents automatic display
+                **kwargs
+            }
             
             # Store current figure count before generating plot
             initial_fig_count = len(plt.get_fignums())
             
-            # Call plot_model - it creates a figure but returns None
-            # Note: We don't close figures before this, as PyCaret may need the current state
-            plot_model(model, **plot_kwargs)
+            # Call plot_model - it creates a figure and may return it or None
+            # We'll try to capture the return value first, then fall back to plt.gcf()
+            result = plot_model(model, **plot_kwargs)
             
-            # Get the current matplotlib figure (created by plot_model)
-            fig = plt.gcf()
+            # Check if plot_model returned a figure object
+            if result is not None and hasattr(result, 'savefig'):
+                # plot_model returned a matplotlib figure
+                fig = result
+            elif result is not None and hasattr(result, 'write_html'):
+                # plot_model returned a Plotly figure - Gradio can handle this too
+                return result, None
+            else:
+                # plot_model returned None or something else, get the current matplotlib figure
+                fig = plt.gcf()
             
             # Verify we got a figure
             if fig is None or not hasattr(fig, 'savefig'):
@@ -157,17 +171,21 @@ class VisualizationManager:
                 if fig_nums:
                     fig = plt.figure(fig_nums[-1])
                 else:
+                    print(f"❌ No matplotlib figure found for plot type '{plot_type}'")
                     return None, f"Failed to generate plot. PyCaret may not have created a figure for plot type '{plot_type}'."
             
             # Ensure figure has content and is properly formatted
             axes = fig.get_axes()
             if len(axes) == 0:
+                print(f"❌ Figure has no axes for plot type '{plot_type}'")
                 return None, f"Plot figure is empty. Plot type '{plot_type}' may not be supported for this model."
+            
+            print(f"✅ Generated matplotlib figure with {len(axes)} axes for plot type '{plot_type}'")
             
             # Apply tight layout to prevent clipping
             try:
                 fig.tight_layout(pad=1.0)
-            except Exception:
+            except Exception as e:
                 # Some plots may not support tight_layout, try adjust_subplots instead
                 try:
                     fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
@@ -178,13 +196,16 @@ class VisualizationManager:
             try:
                 # Force a draw to ensure the figure is fully rendered
                 fig.canvas.draw()
-            except Exception:
+            except Exception as e:
                 # Some backends may not support draw()
+                print(f"⚠️ Could not draw canvas: {e}")
                 pass
             
-            # Return matplotlib figure directly - Gradio's gr.Plot handles matplotlib figures natively
-            # and this is the most reliable approach. The figure should NOT be closed here as Gradio
-            # needs the figure object to render it properly.
+            # CRITICAL: Return the matplotlib figure object directly
+            # DO NOT call fig.show() - this won't work in Gradio
+            # DO NOT return None - return the figure object
+            # Gradio's gr.Plot() component will handle rendering the figure
+            print(f"✅ Returning figure object: {type(fig)}, size: {fig.get_size_inches()}")
             return fig, None
             
         except Exception as e:
