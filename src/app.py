@@ -345,6 +345,8 @@ def handle_model_evaluation(
         
         # Get available plots
         plot_choices = viz_manager.get_available_plots(problem_type)
+        state.set_model_plot_choices(model_name, plot_choices)
+        filtered_choices = state.get_allowed_plots(model_name, plot_choices)
         
         # Get metrics using PyCaret's pull() function
         metrics_df, error = pycaret_wrapper.get_model_metrics()
@@ -434,6 +436,10 @@ def handle_plot_generation(
         plot_obj, error = viz_manager.generate_plot(model, plot_type)
         
         if error:
+            if model_name:
+                lower = error.lower()
+                if "not supported" in lower or "not available" in lower or "plot figure is empty" in lower:
+                    state.add_invalid_plot(model_name, plot_type)
             # Return None explicitly - Gradio will handle None gracefully
             return None, f"❌ Plot Error: {error}"
         
@@ -713,9 +719,12 @@ def create_app():
             metrics, plot_choices, predictions, status = handle_model_evaluation(
                 model_name, state, pycaret_wrapper, viz_manager
             )
+            filtered_choices = state.get_allowed_plots(
+                model_name, state.get_model_plot_choices(model_name)
+            )
             return (
                 metrics,
-                gr.update(choices=plot_choices, value=None),
+                gr.update(choices=filtered_choices, value=None),
                 None,  # Clear plot when model changes
                 predictions if predictions is not None else None
             )
@@ -741,18 +750,21 @@ def create_app():
         # Plot Generation
         def generate_plot(plot_type_val, state):
             plot, status = handle_plot_generation(plot_type_val, state, viz_manager)
-            # Debug: Print what we're returning
             if plot is None:
                 print(f"⚠️ Plot is None. Status: {status}")
             else:
                 print(f"✅ Returning plot object: {type(plot)}")
-            # Return plot object directly - Gradio's gr.Plot will handle it
-            return plot
+
+            model_name = state.get_current_model()
+            base_choices = state.get_model_plot_choices(model_name) if model_name else []
+            filtered_choices = state.get_allowed_plots(model_name, base_choices) if model_name else base_choices
+            new_value = plot_type_val if plot_type_val in filtered_choices else (filtered_choices[0] if filtered_choices else None)
+            return plot, gr.update(choices=filtered_choices, value=new_value)
         
         plot_type.change(
             fn=generate_plot,
             inputs=[plot_type, state_component],
-            outputs=[plot_display]
+            outputs=[plot_display, plot_type]
         )
         
         # Step 6: Model Export

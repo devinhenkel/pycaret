@@ -101,7 +101,6 @@ class VisualizationManager:
         model: Any,
         plot_type: str,
         problem_type: Optional[str] = None,
-        **kwargs
     ) -> Tuple[Any, Optional[str]]:
         """
         Generate a plot for a trained model.
@@ -138,12 +137,9 @@ class VisualizationManager:
             
             # Generate plot - PyCaret creates matplotlib figures but returns None
             # We need to capture the figure after plot_model is called
-            # Force matplotlib backend by setting display_format='text' or system='False'
             plot_kwargs = {
-                'plot': plot_type, 
+                'plot': plot_type,
                 'save': False,
-                'system': False,  # Prevents automatic display
-                **kwargs
             }
             
             # Store current figure count before generating plot
@@ -177,8 +173,10 @@ class VisualizationManager:
             # Ensure figure has content and is properly formatted
             axes = fig.get_axes()
             if len(axes) == 0:
-                print(f"❌ Figure has no axes for plot type '{plot_type}'")
-                return None, f"Plot figure is empty. Plot type '{plot_type}' may not be supported for this model."
+                msg = f"Plot figure is empty. Plot type '{plot_type}' may not be supported for this model."
+                placeholder_fig = plt.figure()
+                placeholder_fig.text(0.5, 0.5, msg, ha='center', va='center', fontsize=12)
+                return placeholder_fig, msg
             
             print(f"✅ Generated matplotlib figure with {len(axes)} axes for plot type '{plot_type}'")
             

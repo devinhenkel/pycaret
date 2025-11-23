@@ -5,7 +5,7 @@ Manages application state across workflow steps using Gradio's State component.
 Stores data, configuration, models, and results throughout the session.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Set
 import pandas as pd
 
 
@@ -38,6 +38,8 @@ class StateManager:
         self.current_model: Optional[str] = None
         self.model_metrics: Dict[str, Dict[str, Any]] = {}  # model_name -> metrics
         self.predictions: Optional[pd.DataFrame] = None
+        self.plot_choices_cache: Dict[str, List[str]] = {}
+        self.invalid_plots: Dict[str, Set[str]] = {}
     
     def set_data(self, data: pd.DataFrame, data_info: Optional[Dict[str, Any]] = None) -> None:
         """Store uploaded dataset and its metadata."""
@@ -119,4 +121,22 @@ class StateManager:
     def get_predictions(self) -> Optional[pd.DataFrame]:
         """Retrieve predictions."""
         return self.predictions
+
+    def set_model_plot_choices(self, model_name: str, choices: List[str]) -> None:
+        """Cache available plot choices for a specific model."""
+        self.plot_choices_cache[model_name] = choices
+
+    def get_model_plot_choices(self, model_name: str) -> List[str]:
+        """Retrieve cached plot choices for the model."""
+        return self.plot_choices_cache.get(model_name, [])
+
+    def add_invalid_plot(self, model_name: str, plot_type: str) -> None:
+        """Mark a plot type as invalid for a given model."""
+        invalid_set = self.invalid_plots.setdefault(model_name, set())
+        invalid_set.add(plot_type)
+
+    def get_allowed_plots(self, model_name: str, base_choices: List[str]) -> List[str]:
+        """Filter out invalid plots from the base list."""
+        invalid_set = self.invalid_plots.get(model_name, set())
+        return [plot for plot in base_choices if plot not in invalid_set]
 
